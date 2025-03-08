@@ -1,8 +1,8 @@
 .env
-uploaded_models
+uploaded_models/
 .glb
 .usdz
-tmp
-temp
+tmp/
+temp/
 .log
 .exe
