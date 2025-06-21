@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Model Viewer</title>
+    
+    <!-- Model Viewer CDN -->
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #000;
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            background-color: transparent;
+        }
+
+        .error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 90%;
+            z-index: 10;
+        }
+
+        .error-message h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #ff6b6b;
+        }
+
+        .error-message p {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #ccc;
+            margin-bottom: 0.5rem;
+        }
+
+        .loading-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 5;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 2rem;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .ar-button {
+            position: absolute;
+            bottom: 2rem;
+            right: 2rem;
+            background: rgba(255, 255, 255, 0.9);
+            color: #000;
+            border: none;
+            padding: 1rem;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 20;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .ar-button:hover {
+            background: #fff;
+            transform: scale(1.1);
+        }
+
+        .ar-button:active {
+            transform: scale(0.95);
+        }
+
+        .info-overlay {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 1rem;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 15;
+            max-width: calc(100% - 4rem);
+        }
+
+        .info-overlay h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: #64ffda;
+        }
+
+        .info-overlay p {
+            font-size: 0.875rem;
+            color: #ccc;
+            line-height: 1.4;
+        }
+
+        .fallback-message {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            padding: 2rem;
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            max-width: 90%;
+            z-index: 10;
+        }
+
+        .fallback-message h3 {
+            color: #ffc107;
+            margin-bottom: 1rem;
+        }
+
+        .fallback-message p {
+            color: #fff;
+            line-height: 1.5;
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .info-overlay {
+                top: 1rem;
+                left: 1rem;
+                right: 1rem;
+                max-width: none;
+                padding: 0.75rem;
+            }
+
+            .info-overlay h3 {
+                font-size: 0.875rem;
+            }
+
+            .info-overlay p {
+                font-size: 0.75rem;
+            }
+
+            .ar-button {
+                bottom: 1.5rem;
+                right: 1.5rem;
+                width: 50px;
+                height: 50px;
+                font-size: 1.25rem;
+            }
+
+            .error-message,
+            .fallback-message {
+                padding: 1.5rem;
+                margin: 1rem;
+            }
+
+            .error-message h2 {
+                font-size: 1.25rem;
+            }
+
+            .error-message p,
+            .fallback-message p {
+                font-size: 0.875rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .info-overlay {
+                font-size: 0.75rem;
+            }
+
+            .ar-button {
+                width: 45px;
+                height: 45px;
+                font-size: 1rem;
+            }
+        }
+
+        /* Hide elements when model is loading */
+        .loading .info-overlay {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="container">
+        <!-- Loading Message -->
+        <div id="loadingMessage" class="loading-message">
+            <div class="loading-spinner"></div>
+            <p>Fetching model information...</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message" style="display: none;">
+            <h2>⚠️ Model Not Found</h2>
+            <p>The requested 3D model could not be loaded.</p>
+            <p>Please check the query parameter and try again.</p>
+        </div>
+
+        <!-- Fallback Message -->
+        <div id="fallbackMessage" class="fallback-message">
+            <h3>⚠️ Browser Not Supported</h3>
+            <p>Your browser doesn't support 3D model viewing or AR features.</p>
+            <p>Please try using a modern browser like Chrome, Safari, or Firefox.</p>
+        </div>
+
+        <!-- Model Viewer -->
+        <model-viewer
+            id="modelViewer"
+            alt="3D Model"
+            ar
+            ar-modes="scene-viewer webxr quick-look"
+            camera-controls
+            auto-rotate
+            shadow-intensity="1"
+            environment-image="neutral"
+            exposure="1"
+            tone-mapping="neutral"
+            style="display: none;">
+        </model-viewer>
+
+        <!-- Info Overlay -->
+        <div id="infoOverlay" class="info-overlay" style="display: none;">
+            <h3>🚀 AR Ready</h3>
+            <p>Tap the AR button to view this model in your real environment</p>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'http://localhost:8080'; // Replace with your actual API endpoint
+        
+        // Get URL parameters
+        function getUrlParameter(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // Validate URL
+        function isValidUrl(string) {
+            try {
+                const url = new URL(string);
+                return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch (_) {
+                return false;
+            }
+        }
+
+        // Check if model format is supported
+        function isSupportedFormat(url) {
+            const supportedFormats = ['.glb', '.gltf', '.usdz'];
+            return supportedFormats.some(format => 
+                url.toLowerCase().includes(format)
+            );
+        }
+
+        // Fetch model URL from API
+        async function fetchModelUrl(query) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/models?q=${encodeURIComponent(query)}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                // Expecting API to return: { modelUrl: "https://example.com/model.glb", title?: "Model Name" }
+                if (!data.modelUrl) {
+                    throw new Error('API response missing modelUrl field');
+                }
+
+                return data;
+            } catch (error) {
+                console.error('API request error:', error);
+                throw error;
+            }
+        }
+
+        // Show error message
+        function showError(message = null) {
+            document.getElementById('loadingMessage').style.display = 'none';
+            document.getElementById('modelViewer').style.display = 'none';
+            document.getElementById('infoOverlay').style.display = 'none';
+            
+            const errorEl = document.getElementById('errorMessage');
+            if (message) {
+                const paragraphs = errorEl.querySelectorAll('p');
+                if (paragraphs.length > 0) {
+                    paragraphs[0].textContent = message;
+                }
+            }
+            errorEl.style.display = 'block';
+        }
+
+        // Show model successfully loaded
+        function showModel() {
+            document.getElementById('loadingMessage').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('modelViewer').style.display = 'block';
+            document.getElementById('infoOverlay').style.display = 'block';
+            document.getElementById('container').classList.remove('loading');
+        }
+
+        // Update loading message
+        function updateLoadingMessage(message) {
+            const loadingText = document.querySelector('#loadingMessage p');
+            if (loadingText) {
+                loadingText.textContent = message;
+            }
+        }
+
+        // Check browser support
+        function checkBrowserSupport() {
+            if (!('customElements' in window)) {
+                document.getElementById('fallbackMessage').style.display = 'block';
+                document.getElementById('loadingMessage').style.display = 'none';
+                return false;
+            }
+            return true;
+        }
+
+        // Initialize the application
+        async function init() {
+            // Check browser support first
+            if (!checkBrowserSupport()) {
+                return;
+            }
+
+            // Add loading class
+            document.getElementById('container').classList.add('loading');
+
+            try {
+                // Get the query parameter from URL
+                const query = getUrlParameter('query') || getUrlParameter('q') || getUrlParameter('id');
+
+                // Check if query parameter exists
+                if (!query) {
+                    showError('No query parameter provided. Please add ?query=your-model-id to the URL.');
+                    return;
+                }
+
+                // Update loading message
+                updateLoadingMessage('Fetching model information...');
+
+                // Fetch model URL from API
+                const modelData = await fetchModelUrl(query);
+                const modelUrl = modelData.modelUrl;
+                const modelTitle = modelData.title || '3D Model';
+
+                // Validate the received URL
+                if (!isValidUrl(modelUrl)) {
+                    showError('Invalid model URL received from API.');
+                    return;
+                }
+
+                // Check if format is supported
+                if (!isSupportedFormat(modelUrl)) {
+                    showError('Unsupported file format received. API should return .glb, .gltf, or .usdz files.');
+                    return;
+                }
+
+                // Update loading message
+                updateLoadingMessage('Loading 3D model...');
+
+                // Load the model
+                const modelViewer = document.getElementById('modelViewer');
+                modelViewer.src = modelUrl;
+                modelViewer.alt = modelTitle;
+
+                // Update page title if model has a title
+                if (modelData.title) {
+                    document.title = `${modelData.title} - AR Model Viewer`;
+                }
+
+                // Handle model loading events
+                modelViewer.addEventListener('load', () => {
+                    showModel();
+                });
+
+                modelViewer.addEventListener('error', (event) => {
+                    console.error('Model loading error:', event);
+                    showError('Failed to load the 3D model from the provided URL.');
+                });
+
+                // Handle AR status
+                modelViewer.addEventListener('ar-status', (event) => {
+                    console.log('AR Status:', event.detail.status);
+                });
+
+                // Handle progress
+                modelViewer.addEventListener('progress', (event) => {
+                    const progress = event.detail.totalProgress;
+                    if (progress < 1) {
+                        const percentage = Math.round(progress * 100);
+                        updateLoadingMessage(`Loading 3D model... ${percentage}%`);
+                    }
+                });
+
+            } catch (error) {
+                console.error('Initialization error:', error);
+                
+                // Provide specific error messages based on error type
+                if (error.message.includes('fetch')) {
+                    showError('Unable to connect to the model service. Please check your internet connection.');
+                } else if (error.message.includes('API request failed')) {
+                    showError('Model not found or service unavailable. Please try again later.');
+                } else {
+                    showError('An unexpected error occurred while loading the model.');
+                }
+            }
+        }
+
+        // Wait for model-viewer to be defined
+        if (customElements.get('model-viewer')) {
+            init();
+        } else {
+            customElements.whenDefined('model-viewer').then(() => {
+                init();
+            });
+        }
+
+        // Handle page visibility changes (for mobile optimization)
+        document.addEventListener('visibilitychange', () => {
+            const modelViewer = document.getElementById('modelViewer');
+            if (modelViewer && modelViewer.src) {
+                if (document.hidden) {
+                    modelViewer.pause();
+                } else {
+                    modelViewer.play();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

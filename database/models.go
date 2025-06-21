@@ -21,9 +21,10 @@ type User struct {
 type AR_model struct {
 	ID         string    `bson:"_id"`
 	FileName   string    `json:"filename" bson:"filename"`
-	URL        string    `json:"url" bson:"url"`
 	Query      string    `json:"query" bson:"query"`
+	URL         string    `json:"url" bson:"url"`
 	UploadDate time.Time `json:"upload_date" bson:"upload_date"`
+	FileExtension  string    `json:"file_ext" bson:"file_ext"`
 }
 
 type Collection[T any] struct {

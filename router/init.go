@@ -29,7 +29,13 @@ func init() {
 		JSONDecoder:        json.Unmarshal,
 		BodyLimit:          100 * 1024 * 1024,
 	})
-	app.Use(cors.New())
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"*"},
+		AllowHeaders:     []string{"*"},
+		AllowCredentials: false,
+		ExposeHeaders:    []string{"*"},
+	}))
 	app.Use(fiberRecover.New(fiberRecover.Config{EnableStackTrace: true}))
 	app.Use(logger.New())
 	log.Println("Default logging enabled")
