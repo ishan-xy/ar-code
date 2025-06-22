@@ -25,7 +25,6 @@ type AR_model struct {
 	DisplayName   string             `json:"display_name" bson:"display_name"`
 	FileName      string             `json:"filename" bson:"filename"`
 	Query         string             `json:"query" bson:"query"`
-	URL           string             `json:"url" bson:"url"`
 	UploadDate    time.Time          `json:"upload_date" bson:"upload_date"`
 	FileExtension string             `json:"file_ext" bson:"file_ext"`
 }

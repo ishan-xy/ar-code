@@ -19,4 +19,6 @@ func modelRoutes(r fiber.Router) {
 	r.Get("/model/files/:query", handlers.GetModelRedirect)
 	r.Get("/qr/:query", handlers.GetModelQRCode)           // Direct PNG image
 	r.Get("/api/qr/:query", handlers.GetModelQRCodeJSON)   // JSON with base64
+	r.Get("/model/:query", handlers.GetModelMetadata, middleware.JWTProtected())       // Model details
+	r.Get("/model", handlers.GetAllModels, middleware.JWTProtected())                 // Get all models
 }
