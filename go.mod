@@ -4,7 +4,7 @@ go 1.23.5
 
 require (
 	github.com/ItsMeSamey/go_utils v1.0.5
-	github.com/aws/aws-sdk-go-v2 v1.36.3 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.9
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.62
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.78.1
@@ -15,6 +15,8 @@ require (
 	go.mongodb.org/mongo-driver/v2 v2.1.0
 	golang.org/x/crypto v0.33.0
 )
+
+require github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 
 require (
 	github.com/andybalholm/brotli v1.1.1 // indirect

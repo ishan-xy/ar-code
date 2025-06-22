@@ -20,6 +20,8 @@ type Config struct {
 	AccessKeyID     string
 	SecretAccessKey string
 	CdnDomain       string
+
+	FrontendURL     string
 }
 
 var Cfg *Config
@@ -49,5 +51,7 @@ func loadConfig() (*Config, error) {
 		AccessKeyID:     Getenv("AccessKeyID"),
 		SecretAccessKey: Getenv("SecretAccessKey"),
 		CdnDomain:       Getenv("CDN_DOMAIN"),
+
+		FrontendURL:     "http://192.168.1.4:5511",
 	}, nil
 }

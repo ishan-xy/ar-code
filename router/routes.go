@@ -14,13 +14,9 @@ func authRoutes(r fiber.Router) {
 }
 
 func modelRoutes(r fiber.Router) {
-	// r.Get("/models", handlers.GetModels, middleware.JWTProtected())
-	// r.Get("/models/:id", handlers.GetModel, middleware.JWTProtected())
-	// r.Get("/templ", handlers.TestTemplate)
-	// r.Get("/view", handlers.ViewModel)
-	// r.Put("/models/:id", handlers.UpdateModel, middleware.JWTProtected())
-	// r.Delete("/models/:id", handlers.DeleteModel, middleware.JWTProtected())
 
-	r.Get("/model", handlers.GetModel)
 	r.Post("/model", handlers.UploadModel, middleware.JWTProtected())
+	r.Get("/model/files/:query", handlers.GetModelRedirect)
+	r.Get("/qr/:query", handlers.GetModelQRCode)           // Direct PNG image
+	r.Get("/api/qr/:query", handlers.GetModelQRCodeJSON)   // JSON with base64
 }

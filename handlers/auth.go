@@ -20,7 +20,11 @@ func SignUp(c fiber.Ctx) error {
 	
 	_, exists, _ := database.UserDB.GetExists(bson.M{"email": req.Email})
 	if exists {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Email already registered",})
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Email already registered",})
+	}
+	_, exists, _ = database.UserDB.GetExists(bson.M{"username": req.Username})
+	if exists {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Username already taken",})
 	}
 
 	hash, err := utility.HashPassword(req.Password)
@@ -35,6 +39,7 @@ func SignUp(c fiber.Ctx) error {
 		ID: primitive.NewObjectID(),
 		Name: req.Name,
 		Email:    req.Email,
+		Username: req.Username,
 		Password: hash,
 	}
 	_, err = database.UserDB.InsertOne(c.Context(), user)
@@ -57,7 +62,7 @@ func Login(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Incorrect password"})
 	}
 
-	tokenString, err := utility.GenerateJWT(user.Email)
+	tokenString, err := utility.GenerateJWT(user.Email, user.Username)
 	if err != nil {
 		log.Println("Error generating JWT: ", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(utils.WithStack(err))

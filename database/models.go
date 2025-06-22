@@ -14,17 +14,20 @@ import (
 type User struct {
 	ID       primitive.ObjectID `bson:"_id,omitempty"`
 	Name     string             `json:"name" bson:"name"`
+	Username string             `json:"username" bson:"username"`
 	Email    string             `json:"email" bson:"email"`
 	Password []byte             `json:"password" bson:"password"`
 }
 
 type AR_model struct {
-	ID         string    `bson:"_id"`
-	FileName   string    `json:"filename" bson:"filename"`
-	Query      string    `json:"query" bson:"query"`
-	URL         string    `json:"url" bson:"url"`
-	UploadDate time.Time `json:"upload_date" bson:"upload_date"`
-	FileExtension  string    `json:"file_ext" bson:"file_ext"`
+	ID            primitive.ObjectID `bson:"_id,omitempty"`
+	OwnerID       primitive.ObjectID `bson:"owner_id"`
+	DisplayName   string             `json:"display_name" bson:"display_name"`
+	FileName      string             `json:"filename" bson:"filename"`
+	Query         string             `json:"query" bson:"query"`
+	URL           string             `json:"url" bson:"url"`
+	UploadDate    time.Time          `json:"upload_date" bson:"upload_date"`
+	FileExtension string             `json:"file_ext" bson:"file_ext"`
 }
 
 type Collection[T any] struct {
