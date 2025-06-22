@@ -27,6 +27,13 @@ type ModelReturnData struct {
 	FileExtension string             `json:"file_ext"`
 	ModelURL      string             `json:"model_url"`
 	QR_Code       string             `json:"qr_code"`
+	Online        bool               `json:"online"`
+}
+
+type ModelUpdateData struct {
+	DisplayName string `json:"display_name"`
+	RefreshQR   bool   `json:"refresh_qr_code"`
+	Online      bool   `json:"online"`
 }
 
 func UploadModel(c fiber.Ctx) error {
@@ -89,6 +96,17 @@ func UploadModel(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Display name cannot be empty"})
 	}
 
+	publish_bool := c.FormValue("online")
+	var online bool
+	switch publish_bool {
+	case "true", "1":
+		online = true
+	case "false", "0":
+		online = false
+	default:
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid publish value, must be true or false"})
+	}
+
 	// Use the unique filename for S3 upload
 	_, err = config.S3Client.PutObject(context.Background(), &s3.PutObjectInput{
 		Bucket: &BucketName,
@@ -107,6 +125,7 @@ func UploadModel(c fiber.Ctx) error {
 		Query:         utility.GenerateQuery(uniqueFilename),
 		UploadDate:    time.Now(),
 		FileExtension: uniqueFilename[strings.LastIndex(uniqueFilename, ".")+1:],
+		Online:        online,
 	}
 
 	_, err = database.AR_modelDB.InsertOne(context.Background(), metadata)
@@ -127,6 +146,10 @@ func GetModelRedirect(c fiber.Ctx) error {
 	}
 	if !found {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Model not found"})
+	}
+	// Check if the model is online
+	if !model.Online {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Model is not online"})
 	}
 
 	// Generates a fresh presigned URL every time
@@ -158,6 +181,7 @@ func GetModelMetadata(c fiber.Ctx) error {
 		FileExtension: model.FileExtension,
 		ModelURL:      "/model/files/" + model.Query,
 		QR_Code:       "/qr/" + model.Query,
+		Online:        model.Online,
 	}
 
 	return c.Status(fiber.StatusOK).JSON(modelMeta)
@@ -167,7 +191,7 @@ func GetAllModels(c fiber.Ctx) error {
 	// Extract user ID from JWT claims
 	userToken := c.Locals("user").(*jwt.Token)
 	claims := userToken.Claims.(jwt.MapClaims)
-	user,_,err := database.UserDB.GetExists(bson.M{"username": claims["username"]})
+	user, _, err := database.UserDB.GetExists(bson.M{"username": claims["username"]})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
 	}
@@ -195,6 +219,7 @@ func GetAllModels(c fiber.Ctx) error {
 			FileExtension: model.FileExtension,
 			ModelURL:      "/model/files/" + model.Query,
 			QR_Code:       "/qr/" + model.Query,
+			Online:        model.Online,
 		}
 		modelList = append(modelList, modelMeta)
 	}
@@ -206,3 +231,81 @@ func GetAllModels(c fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(modelList)
 }
 
+func UpdateModel(c fiber.Ctx) error {
+	var req ModelUpdateData
+	if err := c.Bind().Body(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error":   utils.WithStack(err),
+			"message": "Invalid request body",
+		})
+	}
+
+	query := c.Params("query")
+	if query == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Query parameter is required"})
+	}
+
+	model, found, err := database.AR_modelDB.GetExists(bson.M{"query": query})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+	if !found {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Model not found"})
+	}
+
+	updateDoc := bson.M{}
+
+	// Handle display name update
+	if req.DisplayName != "" && req.DisplayName != model.DisplayName {
+		// Check for duplicates
+		_, exists, err := database.AR_modelDB.GetExists(bson.M{
+			"display_name": req.DisplayName,
+			"owner_id":     model.OwnerID,
+		})
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+		}
+		if exists {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "A model with this display name already exists"})
+		}
+		updateDoc["display_name"] = req.DisplayName
+		model.DisplayName = req.DisplayName // keep local copy updated
+	}
+
+	// Handle QR refresh
+	if req.RefreshQR {
+		newQuery := utility.GenerateQuery(model.FileName)
+		updateDoc["query"] = newQuery
+		model.Query = newQuery
+	}
+
+	// Handle online toggle
+	updateDoc["online"] = req.Online
+	model.Online = req.Online
+
+	if len(updateDoc) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "No fields to update"})
+	}
+
+	// Perform update in DB
+	_, err = database.AR_modelDB.UpdateOne(context.Background(), bson.M{"_id": model.ID}, bson.M{
+		"$set": updateDoc,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Model updated successfully",
+		"model": ModelReturnData{
+			ID:            model.ID,
+			DisplayName:   model.DisplayName,
+			Query:         model.Query,
+			UploadDate:    model.UploadDate,
+			FileExtension: model.FileExtension,
+			ModelURL:      "/model/files/" + model.Query,
+			QR_Code:       "/qr/" + model.Query,
+			Online:        model.Online,
+		},
+	})
+}

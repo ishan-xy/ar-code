@@ -21,4 +21,5 @@ func modelRoutes(r fiber.Router) {
 	r.Get("/api/qr/:query", handlers.GetModelQRCodeJSON)   // JSON with base64
 	r.Get("/model/:query", handlers.GetModelMetadata, middleware.JWTProtected())       // Model details
 	r.Get("/model", handlers.GetAllModels, middleware.JWTProtected())                 // Get all models
+	r.Put("/model/:query", handlers.UpdateModel, middleware.JWTProtected())          // Update model metadata
 }
