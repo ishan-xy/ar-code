@@ -5,12 +5,15 @@ import (
 	"backend/database"
 	"backend/utility"
 	"context"
+	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 	"time"
 
 	utils "github.com/ItsMeSamey/go_utils"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -307,5 +310,117 @@ func UpdateModel(c fiber.Ctx) error {
 			QR_Code:       "/qr/" + model.Query,
 			Online:        model.Online,
 		},
+	})
+}
+
+func DeleteModel(c fiber.Ctx) error {
+	query := c.Params("query")
+	if query == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Query parameter is required"})
+	}
+
+	model, found, err := database.AR_modelDB.GetExists(bson.M{"query": query})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+	if !found {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Model not found"})
+	}
+
+	_, err = config.S3Client.DeleteObject(context.Background(), &s3.DeleteObjectInput{
+		Bucket: &BucketName,
+		Key:    &model.FileName,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+
+	// Delete the model metadata from MongoDB
+	_, err = database.AR_modelDB.DeleteOne(context.Background(), bson.M{"_id": model.ID})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Model deleted successfully"})
+}
+
+type BulkDeleteRequest struct {
+	Queries []string `json:"queries"`
+}
+
+// DeleteMultipleModels deletes one or more models based on provided query parameters
+func DeleteMultipleModels(c fiber.Ctx) error {
+	// Extract user from JWT
+	userToken := c.Locals("user").(*jwt.Token)
+	_, username, err := utility.GetClaimsFromToken(userToken)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+	user, _, err := database.UserDB.GetExists(bson.M{"username": username})
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+
+	// Get queries from request (e.g., comma-separated or JSON array)
+	queries := c.Query("query")
+	if queries == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "At least one query parameter is required"})
+	}
+	queryList := strings.Split(queries, ",")
+	if len(queryList) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "No valid queries provided"})
+	}
+
+	// Fetch models to ensure they exist and belong to the user
+	filter := bson.M{
+		"query":    bson.M{"$in": queryList},
+		"owner_id": user.ID,
+	}
+	cursor, err := database.AR_modelDB.Collection.Find(context.Background(), filter)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+	defer cursor.Close(context.Background())
+
+	var models []database.AR_model
+	if err := cursor.All(context.Background(), &models); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+	if len(models) == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "No models found for the provided queries"})
+	}
+
+	// Prepare S3 deletion
+	var objectIds []types.ObjectIdentifier
+	modelIds := make([]primitive.ObjectID, 0, len(models))
+	for _, model := range models {
+		objectIds = append(objectIds, types.ObjectIdentifier{Key: &model.FileName})
+		modelIds = append(modelIds, model.ID)
+	}
+
+	// Delete objects from S3 in a single batch
+	_, err = config.S3Client.DeleteObjects(context.Background(), &s3.DeleteObjectsInput{
+		Bucket: &BucketName,
+		Delete: &types.Delete{
+			Objects: objectIds,
+			Quiet:   &[]bool{true}[0], // Use quiet mode to reduce response size
+		},
+	})
+	if err != nil {
+		// Log the error and continue to delete metadata to avoid orphaned data
+		// In a real-world scenario, you might want to handle partial failures differently
+		log.Printf("Failed to delete some S3 objects: %v", err)
+	}
+
+	// Delete model metadata from MongoDB in a single batch
+	_, err = database.AR_modelDB.DeleteMany(context.Background(), bson.M{
+		"_id": bson.M{"$in": modelIds},
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": fmt.Sprintf("Successfully deleted %d model(s)", len(models)),
 	})
 }
