@@ -23,4 +23,5 @@ func modelRoutes(r fiber.Router) {
 	r.Get("/model", handlers.GetAllModels, middleware.JWTProtected())
 	r.Put("/model/:query", handlers.UpdateModel, middleware.JWTProtected())
 	r.Delete("/model/:query", handlers.DeleteModel, middleware.JWTProtected())
+	r.Delete("/model/", handlers.DeleteMultipleModels, middleware.JWTProtected())
 }
