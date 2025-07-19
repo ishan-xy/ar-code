@@ -14,6 +14,7 @@ import (
 	utils "github.com/ItsMeSamey/go_utils"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -21,7 +22,7 @@ import (
 )
 
 var BucketName string = "ar-models"
-
+var ctx = context.Background()
 type ModelReturnData struct {
 	ID            primitive.ObjectID `json:"id"`
 	DisplayName   string             `json:"display_name"`
@@ -150,19 +151,41 @@ func GetModelRedirect(c fiber.Ctx) error {
 	if !found {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Model not found"})
 	}
-	// Check if the model is online
 	if !model.Online {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Model is not online"})
 	}
 
-	// Generates a fresh presigned URL every time
-	// CACHING REQUIRED HERE, REFRESH AFTER 12 HOURS
-	presignedUrl, err := utility.GenerateR2PresignedURL(config.S3Client, BucketName, model.FileName)
+	// Try to get cached presigned URL
+	cachedURL, err := config.RedisClient.Get(ctx, model.Query).Result()
+	if err == redis.Nil {
+		// Cache miss - generate new presigned URL
+		return generateAndCacheURL(c, model)
+	}
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
 	}
 
-	return c.Redirect().Status(fiber.StatusTemporaryRedirect).To(presignedUrl)
+	// Cache hit - use cached URL
+	if cachedURL == "" {
+		// Fallback: generate new URL if cached value is empty
+		return generateAndCacheURL(c, model)
+	}
+
+	return c.Redirect().Status(fiber.StatusTemporaryRedirect).To(cachedURL)
+}
+
+func generateAndCacheURL(c fiber.Ctx, model database.AR_model) error {
+	presignedURL, err := utility.GenerateR2PresignedURL(config.S3Client, BucketName, model.FileName)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+
+	// Cache the presigned URL with 12-hour expiration
+	if err := config.RedisClient.Set(ctx, model.Query, presignedURL, 12*time.Hour).Err(); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+
+	return c.Redirect().Status(fiber.StatusTemporaryRedirect).To(presignedURL)
 }
 
 func GetModelMetadata(c fiber.Ctx) error {

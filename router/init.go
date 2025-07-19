@@ -29,18 +29,20 @@ func init() {
 		JSONDecoder:        json.Unmarshal,
 		BodyLimit:          100 * 1024 * 1024,
 	})
+    
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"*"},
-		AllowHeaders:     []string{"*"},
-		AllowCredentials: false,
-		ExposeHeaders:    []string{"*"},
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173"}, // Specify allowed origins
+		AllowMethods:     []string{"GET", "POST", "HEAD", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowCredentials: true,
 	}))
+
 	app.Use(fiberRecover.New(fiberRecover.Config{EnableStackTrace: true}))
 	app.Use(logger.New())
+	
 	log.Println("Default logging enabled")
 
-	utils.SetErrorStackTrace(true)
+	utils.SetErrorStackTrace(true)	
 
 	authRoutes(app)
 	modelRoutes(app)

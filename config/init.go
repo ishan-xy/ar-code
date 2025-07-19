@@ -1,10 +1,12 @@
 package config
 
 import (
+	"context"
 	"log"
 	"time"
 
 	utils "github.com/ItsMeSamey/go_utils"
+	"github.com/go-redis/redis/v8"
 )
 
 type Config struct {
@@ -25,7 +27,7 @@ type Config struct {
 }
 
 var Cfg *Config
-
+var RedisClient *redis.Client
 func init() {
 	loadEnv()
 	var err error
@@ -33,6 +35,16 @@ func init() {
 	if err != nil {
 		log.Fatal(utils.WithStack(err))
 	}
+	RedisClient = redis.NewClient(&redis.Options{
+		Addr:     Getenv("REDIS_ADDR"),
+		Password: Getenv("REDIS_PASSWORD"),
+		DB:       0, // use default DB
+	})
+	ping, err := RedisClient.Ping(context.Background()).Result()
+	if err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", utils.WithStack(err))
+	}
+	log.Println("Connected to Redis:", ping)
 	log.Println("Configuration loaded successfully:", Cfg)
 }
 
@@ -52,6 +64,6 @@ func loadConfig() (*Config, error) {
 		SecretAccessKey: Getenv("SecretAccessKey"),
 		CdnDomain:       Getenv("CDN_DOMAIN"),
 
-		FrontendURL:     "http://192.168.1.7:5511",
+		FrontendURL:     "http://192.168.1.2:5511",
 	}, nil
 }
