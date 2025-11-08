@@ -64,6 +64,6 @@ func loadConfig() (*Config, error) {
 		SecretAccessKey: Getenv("SecretAccessKey"),
 		CdnDomain:       Getenv("CDN_DOMAIN"),
 
-		FrontendURL:     "http://192.168.1.2:5511",
+		FrontendURL:     "http://172.31.35.109:5511",
 	}, nil
 }

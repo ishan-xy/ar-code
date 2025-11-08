@@ -259,7 +259,7 @@ func GetAllModels(c fiber.Ctx) error {
 
 func UpdateModel(c fiber.Ctx) error {
 	var req ModelUpdateData
-	if err := c.Bind().Body(&req); err != nil {
+	if err := c.Bind().JSON(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error":   utils.WithStack(err),
 			"message": "Invalid request body",
