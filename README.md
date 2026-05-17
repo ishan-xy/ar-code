@@ -3,7 +3,7 @@
 AR-Code is a browser-based Augmented Reality platform that allows businesses and sellers to showcase products in AR using QR codes.
 
 Built with a CDN-backed architecture and Redis caching, the platform delivers fast-loading 3D models that can be launched instantly on both iOS and Android without installing any application.
-
+<br>Frontend Codebase: https://github.com/ishan-xy/arcode-dashboard
 ## Preview
 
 ### Home Page
