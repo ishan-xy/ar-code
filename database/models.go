@@ -21,13 +21,16 @@ type User struct {
 
 type AR_model struct {
 	ID            primitive.ObjectID `bson:"_id,omitempty"`
-	OwnerID       primitive.ObjectID `bson:"owner_id"`
+	OwnerID       *primitive.ObjectID `bson:"owner_id"`
 	DisplayName   string             `json:"display_name" bson:"display_name"`
 	FileName      string             `json:"filename" bson:"filename"`
 	Query         string             `json:"query" bson:"query"`
 	Online        bool               `json:"online" bson:"online"`
-	UploadDate    time.Time          `json:"upload_date" bson:"upload_date"`
+	CreatedAt     time.Time          `json:"created_at" bson:"created_at"`
 	FileExtension string             `json:"file_ext" bson:"file_ext"`
+	IsGuest       bool                `json:"is_guest" bson:"is_guest"`
+	ExpiresAt     *time.Time          `json:"expires_at,omitempty" bson:"expires_at,omitempty"` // nil for authenticated users
+
 }
 
 type Collection[T any] struct {

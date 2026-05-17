@@ -1,6 +1,7 @@
 package router
 
 import (
+	"backend/handlers"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,7 +32,7 @@ func init() {
 	})
     
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173", " http://localhost:5511", "http://172.31.35.109:5511"}, // Specify allowed origins
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173", " http://localhost:5511", "http://172.31.35.109:5511", "https://planner-rna-hurricane-legs.trycloudflare.com"}, // Specify allowed origins
 		AllowMethods:     []string{"GET", "POST", "HEAD", "PUT", "DELETE", "PATCH", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		AllowCredentials: true,
@@ -46,6 +47,15 @@ func init() {
 
 	authRoutes(app)
 	modelRoutes(app)
+
+	go func ()  {
+		handlers.CleanupExpiredGuestModels()
+		ticker := time.NewTicker(1 * time.Hour)
+		for range ticker.C {
+			handlers.CleanupExpiredGuestModels()
+		}
+	}()
+
 	// Start the server
 	log.Fatal(
 		app.Listen("127.0.0.1:8080", fiber.ListenConfig{

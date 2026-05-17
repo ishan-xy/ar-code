@@ -23,11 +23,12 @@ import (
 
 var BucketName string = "ar-models"
 var ctx = context.Background()
+
 type ModelReturnData struct {
 	ID            primitive.ObjectID `json:"id"`
 	DisplayName   string             `json:"display_name"`
 	Query         string             `json:"query"`
-	UploadDate    time.Time          `json:"upload_date"`
+	CreatedAt     time.Time          `json:"created_at"`
 	FileExtension string             `json:"file_ext"`
 	ModelURL      string             `json:"model_url"`
 	QR_Code       string             `json:"qr_code"`
@@ -38,6 +39,118 @@ type ModelUpdateData struct {
 	DisplayName string `json:"display_name"`
 	RefreshQR   bool   `json:"refresh_qr_code"`
 	Online      bool   `json:"online"`
+}
+
+// GuestUploadModel handles unauthenticated GLB uploads.
+// Returns a QR code URL and query. No owner is stored.
+// Guest models expire after 72 hours and are cleaned up by CleanupExpiredGuestModels.
+
+func GuestUploadModel(c fiber.Ctx) error {
+	file, err := c.FormFile("model")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "model file is required"})
+	}
+	if strings.ToLower(filepath.Ext(file.Filename)) != ".glb" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "only .glb files are supported"})
+	}
+
+	f, err := file.Open()
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+	defer f.Close()
+	if _, err = f.Seek(0, 0); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+
+	displayName := strings.TrimSpace(c.FormValue("displayName"))
+	if displayName == "" {
+		displayName = strings.TrimSuffix(file.Filename, filepath.Ext(file.Filename))
+	}
+
+	normalizedFilename := utility.NormalizeFileName(file.Filename)
+	// Use a fixed "guest" prefix instead of a username
+	uniqueFilename, err := utility.GenerateUniqueFilename(config.S3Client, BucketName, "guest", normalizedFilename)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+
+	_, err = config.S3Client.PutObject(context.Background(), &s3.PutObjectInput{
+		Bucket: &BucketName,
+		Key:    &uniqueFilename,
+		Body:   f,
+	})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+
+	expiresAt := time.Now().Add(72 * time.Hour)
+	metadata := database.AR_model{
+		ID:            primitive.NewObjectID(),
+		OwnerID:       nil, // no owner for guests
+		FileName:      uniqueFilename,
+		DisplayName:   displayName,
+		Query:         utility.GenerateQuery(uniqueFilename),
+		CreatedAt:     time.Now(),
+		FileExtension: strings.TrimPrefix(filepath.Ext(uniqueFilename), "."),
+		Online:        true,
+		IsGuest:       true,
+		ExpiresAt:     &expiresAt,
+	}
+
+	if _, err = database.AR_modelDB.InsertOne(context.Background(), metadata); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": utils.WithStack(err)})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"query":      metadata.Query,
+		"qr_code":    "/qr/" + metadata.Query,
+		"ar_url":     "/model/files/" + metadata.Query,
+		"expires_at": expiresAt,
+	})
+}
+
+// CleanupExpiredGuestModels deletes guest models past their ExpiresAt time.
+// Call this on startup and then on a ticker (e.g. every hour).
+func CleanupExpiredGuestModels() {
+	filter := bson.M{
+		"is_guest":   true,
+		"expires_at": bson.M{"$lt": time.Now()},
+	}
+
+	cursor, err := database.AR_modelDB.Collection.Find(context.Background(), filter)
+	if err != nil {
+		log.Printf("Cleanup: failed to find expired guests: %v", err)
+		return
+	}
+	defer cursor.Close(context.Background())
+
+	var expired []database.AR_model
+	if err := cursor.All(context.Background(), &expired); err != nil || len(expired) == 0 {
+		return
+	}
+
+	// Batch-delete S3 objects
+	var objectIds []types.ObjectIdentifier
+	var docIds []primitive.ObjectID
+	for _, m := range expired {
+		objectIds = append(objectIds, types.ObjectIdentifier{Key: &m.FileName})
+		docIds = append(docIds, m.ID)
+	}
+	_, err = config.S3Client.DeleteObjects(context.Background(), &s3.DeleteObjectsInput{
+		Bucket: &BucketName,
+		Delete: &types.Delete{Objects: objectIds, Quiet: &[]bool{true}[0]},
+	})
+	if err != nil {
+		log.Printf("Cleanup: S3 batch delete error: %v", err)
+	}
+
+	res, err := database.AR_modelDB.DeleteMany(context.Background(), bson.M{"_id": bson.M{"$in": docIds}})
+	if err != nil {
+		log.Printf("Cleanup: MongoDB delete error: %v", err)
+		return
+	}
+	log.Printf("Cleanup: removed %d expired guest model(s)", res.DeletedCount)
 }
 
 func UploadModel(c fiber.Ctx) error {
@@ -123,11 +236,11 @@ func UploadModel(c fiber.Ctx) error {
 
 	metadata := database.AR_model{
 		ID:            primitive.NewObjectID(),
-		OwnerID:       user.ID,
+		OwnerID:       &user.ID,
 		FileName:      uniqueFilename,
 		DisplayName:   displayName,
 		Query:         utility.GenerateQuery(uniqueFilename),
-		UploadDate:    time.Now(),
+		CreatedAt:     time.Now(),
 		FileExtension: uniqueFilename[strings.LastIndex(uniqueFilename, ".")+1:],
 		Online:        online,
 	}
@@ -203,7 +316,7 @@ func GetModelMetadata(c fiber.Ctx) error {
 		ID:            model.ID,
 		DisplayName:   model.DisplayName,
 		Query:         model.Query,
-		UploadDate:    model.UploadDate,
+		CreatedAt:     model.CreatedAt,
 		FileExtension: model.FileExtension,
 		ModelURL:      "/model/files/" + model.Query,
 		QR_Code:       "/qr/" + model.Query,
@@ -241,7 +354,7 @@ func GetAllModels(c fiber.Ctx) error {
 			ID:            model.ID,
 			DisplayName:   model.DisplayName,
 			Query:         model.Query,
-			UploadDate:    model.UploadDate,
+			CreatedAt:    model.CreatedAt,
 			FileExtension: model.FileExtension,
 			ModelURL:      "/model/files/" + model.Query,
 			QR_Code:       "/qr/" + model.Query,
@@ -327,7 +440,7 @@ func UpdateModel(c fiber.Ctx) error {
 			ID:            model.ID,
 			DisplayName:   model.DisplayName,
 			Query:         model.Query,
-			UploadDate:    model.UploadDate,
+			CreatedAt:     model.CreatedAt,
 			FileExtension: model.FileExtension,
 			ModelURL:      "/model/files/" + model.Query,
 			QR_Code:       "/qr/" + model.Query,
