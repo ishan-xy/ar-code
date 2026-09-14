@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"log"
+	"os"
 	"time"
 
 	utils "github.com/ItsMeSamey/go_utils"
@@ -22,6 +23,7 @@ type Config struct {
 	AccessKeyID     string
 	SecretAccessKey string
 	CdnDomain       string
+	BucketName      string
 
 	FrontendURL     string
 }
@@ -49,9 +51,29 @@ func init() {
 }
 
 func loadConfig() (*Config, error) {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	viewerURL := os.Getenv("VIEWER_URL")
+	if viewerURL == "" {
+		viewerURL = os.Getenv("FRONTEND_URL")
+	}
+	if viewerURL == "" {
+		viewerURL = "https://v.gamchngr.xyz"
+	}
+
+	bucketName := os.Getenv("R2_BUCKET_NAME")
+	if bucketName == "" {
+		bucketName = os.Getenv("BUCKET_NAME")
+	}
+	if bucketName == "" {
+		bucketName = "ar-models"
+	}
 
 	return &Config{
-		Port:          Getenv("PORT"),
+		Port:          port,
 		MongoURI:      Getenv("MONGO_URI"),
 		DBName:        Getenv("DBName"),
 		Secret:        Getenv("SECRET"),
@@ -63,7 +85,8 @@ func loadConfig() (*Config, error) {
 		AccessKeyID:     Getenv("AccessKeyID"),
 		SecretAccessKey: Getenv("SecretAccessKey"),
 		CdnDomain:       Getenv("CDN_DOMAIN"),
+		BucketName:      bucketName,
 
-		FrontendURL:     "https://ar.gamchngr.xyz",
+		FrontendURL:     viewerURL,
 	}, nil
 }

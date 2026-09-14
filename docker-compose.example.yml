@@ -1,0 +1,78 @@
+# Reference docker-compose.yml for GCP VM (/opt/ar-code/docker-compose.yml)
+# Runs Redis, Dev Backend, Main Backend, and Caddy Reverse Proxy with Auto-HTTPS.
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_net
+
+  backend-main:
+    image: ghcr.io/<your-github-username>/ar-code:main
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      MONGO_URI: ${MAIN_MONGO_URI}
+      DBName: "ar-code-prod"
+      SECRET: ${MAIN_SECRET}
+      AccountID: ${CF_ACCOUNT_ID}
+      TokenValue: ${CF_TOKEN_VALUE}
+      AccessKeyID: ${CF_ACCESS_KEY_ID}
+      SecretAccessKey: ${CF_SECRET_ACCESS_KEY}
+      CDN_DOMAIN: "r2.gamchngr.xyz"
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      CORS_ORIGINS: "https://ar.gamchngr.xyz,https://v.gamchngr.xyz"
+      VIEWER_URL: "https://v.gamchngr.xyz"
+    depends_on:
+      - redis
+    networks:
+      - app_net
+
+  backend-dev:
+    image: ghcr.io/<your-github-username>/ar-code:dev
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      MONGO_URI: ${DEV_MONGO_URI}
+      DBName: "ar-code-dev"
+      SECRET: ${DEV_SECRET}
+      AccountID: ${CF_ACCOUNT_ID}
+      TokenValue: ${CF_TOKEN_VALUE}
+      AccessKeyID: ${CF_ACCESS_KEY_ID}
+      SecretAccessKey: ${CF_SECRET_ACCESS_KEY}
+      CDN_DOMAIN: "r2.gamchngr.xyz"
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      CORS_ORIGINS: "https://dev-ar.gamchngr.xyz,https://dev-v.gamchngr.xyz,http://localhost:3000"
+      VIEWER_URL: "https://dev-v.gamchngr.xyz"
+    depends_on:
+      - redis
+    networks:
+      - app_net
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - app_net
+
+networks:
+  app_net:
+    driver: bridge
+
+volumes:
+  redis_data:
+  caddy_data:
+  caddy_config:
