@@ -1,4 +1,4 @@
-# Reference docker-compose.yml for GCP VM (/opt/gamchngr/docker-compose.yml)
+# Reference docker-compose.yml for GCP VM (/opt/ar-code/docker-compose.yml)
 # Runs Redis, Dev Backend, Main Backend, and Caddy Reverse Proxy with Auto-HTTPS.
 
 services:

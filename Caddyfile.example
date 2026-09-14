@@ -1,4 +1,4 @@
-# Reference Caddyfile for GCP VM (/opt/gamchngr/Caddyfile)
+# Reference Caddyfile for GCP VM (/opt/ar-code/Caddyfile)
 # Caddy automatically provisions and renews SSL certificates from Let's Encrypt for all domains listed below.
 
 api.gamchngr.xyz {

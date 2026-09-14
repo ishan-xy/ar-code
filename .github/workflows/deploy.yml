@@ -56,7 +56,7 @@ jobs:
           username: ${{ secrets.GCP_VM_USER }}
           key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
           script: |
-            cd /opt/gamchngr
+            cd /opt/ar-code
             echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             # Pull new image for the branch environment
             docker compose pull backend-${{ github.ref_name }}

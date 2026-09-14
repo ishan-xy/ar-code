@@ -9,3 +9,5 @@ temp/
 .venv
 
 .DS_Store
+.env.old
+.env.production
