@@ -6,3 +6,6 @@ tmp/
 temp/
 .log
 .exe
+.venv
+
+.DS_Store
