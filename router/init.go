@@ -32,7 +32,7 @@ func init() {
 	})
     
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173", " http://localhost:5511", "http://172.31.35.109:5511", "https://planner-rna-hurricane-legs.trycloudflare.com"}, // Specify allowed origins
+		AllowOrigins:     []string{"http://localhost:3000", "https://ar.gamchngr.xyz/"},
 		AllowMethods:     []string{"GET", "POST", "HEAD", "PUT", "DELETE", "PATCH", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		AllowCredentials: true,

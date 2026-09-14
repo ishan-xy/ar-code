@@ -64,6 +64,6 @@ func loadConfig() (*Config, error) {
 		SecretAccessKey: Getenv("SecretAccessKey"),
 		CdnDomain:       Getenv("CDN_DOMAIN"),
 
-		FrontendURL:     "https://planner-rna-hurricane-legs.trycloudflare.com",
+		FrontendURL:     "https://ar.gamchngr.xyz",
 	}, nil
 }

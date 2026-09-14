@@ -29,4 +29,8 @@ func modelRoutes(r fiber.Router) {
 	r.Get("/api/qr/:query", handlers.GetModelQRCodeJSON)   // JSON with base64
 	
 	r.Post("/guest/model", handlers.GuestUploadModel)
+
+	// Public — no JWT — used by the AR viewer HTML
+	r.Get("/ar/meta/:query",          handlers.GetARMeta)
+	r.Get("/model/files/usdz/:query", handlers.GetUSDZRedirect)
 }

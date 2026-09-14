@@ -20,17 +20,17 @@ type User struct {
 }
 
 type AR_model struct {
-	ID            primitive.ObjectID `bson:"_id,omitempty"`
+	ID            primitive.ObjectID  `bson:"_id,omitempty"`
 	OwnerID       *primitive.ObjectID `bson:"owner_id"`
-	DisplayName   string             `json:"display_name" bson:"display_name"`
-	FileName      string             `json:"filename" bson:"filename"`
-	Query         string             `json:"query" bson:"query"`
-	Online        bool               `json:"online" bson:"online"`
-	CreatedAt     time.Time          `json:"created_at" bson:"created_at"`
-	FileExtension string             `json:"file_ext" bson:"file_ext"`
+	DisplayName   string              `json:"display_name" bson:"display_name"`
+	FileName      string              `json:"filename" bson:"filename"`       // GLB file key in S3
+	USDZFileName  string              `json:"usdz_filename" bson:"usdz_filename"` // USDZ file key in S3; empty if not uploaded
+	Query         string              `json:"query" bson:"query"`
+	Online        bool                `json:"online" bson:"online"`
+	CreatedAt     time.Time           `json:"created_at" bson:"created_at"`
+	FileExtension string              `json:"file_ext" bson:"file_ext"`
 	IsGuest       bool                `json:"is_guest" bson:"is_guest"`
 	ExpiresAt     *time.Time          `json:"expires_at,omitempty" bson:"expires_at,omitempty"` // nil for authenticated users
-
 }
 
 type Collection[T any] struct {
