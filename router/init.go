@@ -1,11 +1,14 @@
 package router
 
 import (
+	"backend/config"
 	"backend/handlers"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"strings"
 	"time"
 
 	utils "github.com/ItsMeSamey/go_utils"
@@ -30,9 +33,29 @@ func init() {
 		JSONDecoder:        json.Unmarshal,
 		BodyLimit:          100 * 1024 * 1024,
 	})
-    
+
+	corsOrigins := os.Getenv("CORS_ORIGINS")
+	var origins []string
+	if corsOrigins != "" {
+		for _, o := range strings.Split(corsOrigins, ",") {
+			o = strings.TrimSpace(o)
+			if o != "" {
+				origins = append(origins, o)
+			}
+		}
+	} else {
+		origins = []string{
+			"http://localhost:3000",
+			"http://127.0.0.1:3000",
+			"https://ar.gamchngr.xyz",
+			"https://dev-ar.gamchngr.xyz",
+			"https://v.gamchngr.xyz",
+			"https://dev-v.gamchngr.xyz",
+		}
+	}
+
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "https://ar.gamchngr.xyz/"},
+		AllowOrigins:     origins,
 		AllowMethods:     []string{"GET", "POST", "HEAD", "PUT", "DELETE", "PATCH", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		AllowCredentials: true,
@@ -56,9 +79,13 @@ func init() {
 		}
 	}()
 
-	// Start the server
+	// Start the server bound to 0.0.0.0 for container and external proxy reachability
+	port := config.Cfg.Port
+	if port == "" {
+		port = "8080"
+	}
 	log.Fatal(
-		app.Listen("127.0.0.1:8080", fiber.ListenConfig{
+		app.Listen("0.0.0.0:"+port, fiber.ListenConfig{
 			EnablePrintRoutes: true,
 		}),
 	)

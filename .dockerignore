@@ -1,0 +1,8 @@
+.git
+.gitignore
+.env
+*.local
+temp
+server
+backend
+README.md

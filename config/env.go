@@ -5,18 +5,15 @@ import (
 	"os"
 	"strconv"
 
-	utils "github.com/ItsMeSamey/go_utils"
 	"github.com/joho/godotenv"
 )
 
 var IsDebug bool
 
 func loadEnv() {
-	err := godotenv.Load()
-	utils.WithStack(err)
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	// Optional load: in local dev, .env provides variables.
+	// In production/Docker, environment variables are injected directly.
+	_ = godotenv.Load()
 	IsDebug = os.Getenv("DEBUG") == "true"
 }
 

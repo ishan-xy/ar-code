@@ -21,7 +21,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-var BucketName string = "ar-models"
+var BucketName string = config.Cfg.BucketName
 var ctx = context.Background()
 
 type ModelReturnData struct {
