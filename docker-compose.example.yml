@@ -17,13 +17,13 @@ services:
     environment:
       PORT: "8080"
       MONGO_URI: ${MAIN_MONGO_URI}
-      DBName: "ar-code-prod"
+      DB_NAME: "ar-code-prod"
       SECRET: ${MAIN_SECRET}
-      AccountID: ${CF_ACCOUNT_ID}
-      TokenValue: ${CF_TOKEN_VALUE}
-      AccessKeyID: ${CF_ACCESS_KEY_ID}
-      SecretAccessKey: ${CF_SECRET_ACCESS_KEY}
+      CF_ACCOUNT_ID: ${CF_ACCOUNT_ID}
+      CF_ACCESS_KEY_ID: ${CF_ACCESS_KEY_ID}
+      CF_SECRET_ACCESS_KEY: ${CF_SECRET_ACCESS_KEY}
       CDN_DOMAIN: "r2.gamchngr.xyz"
+      R2_BUCKET_NAME: "ar-models"
       REDIS_ADDR: "redis:6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       CORS_ORIGINS: "https://ar.gamchngr.xyz,https://v.gamchngr.xyz"
@@ -39,13 +39,13 @@ services:
     environment:
       PORT: "8080"
       MONGO_URI: ${DEV_MONGO_URI}
-      DBName: "ar-code-dev"
+      DB_NAME: "ar-code-dev"
       SECRET: ${DEV_SECRET}
-      AccountID: ${CF_ACCOUNT_ID}
-      TokenValue: ${CF_TOKEN_VALUE}
-      AccessKeyID: ${CF_ACCESS_KEY_ID}
-      SecretAccessKey: ${CF_SECRET_ACCESS_KEY}
+      CF_ACCOUNT_ID: ${CF_ACCOUNT_ID}
+      CF_ACCESS_KEY_ID: ${CF_ACCESS_KEY_ID}
+      CF_SECRET_ACCESS_KEY: ${CF_SECRET_ACCESS_KEY}
       CDN_DOMAIN: "r2.gamchngr.xyz"
+      R2_BUCKET_NAME: "ar-models"
       REDIS_ADDR: "redis:6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       CORS_ORIGINS: "https://dev-ar.gamchngr.xyz,https://dev-v.gamchngr.xyz,http://localhost:3000"

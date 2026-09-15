@@ -62,16 +62,29 @@ func init() {
 	}))
 
 	app.Use(fiberRecover.New(fiberRecover.Config{EnableStackTrace: true}))
-	app.Use(logger.New())
-	
-	log.Println("Default logging enabled")
+	app.Use(logger.New(logger.Config{
+		Format:     "[${time}] ${status} ${method} ${path} - ${latency} ${error}\n",
+		TimeFormat: "2006-01-02 15:04:05",
+		TimeZone:   "UTC",
+	}))
 
-	utils.SetErrorStackTrace(true)	
+	utils.SetErrorStackTrace(true)
+
+	// Root and health check routes
+	app.Get("/", func(c fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"status":  "online",
+			"service": "ar-code-api",
+		})
+	})
+	app.Get("/health", func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
 
 	authRoutes(app)
 	modelRoutes(app)
 
-	go func ()  {
+	go func() {
 		handlers.CleanupExpiredGuestModels()
 		ticker := time.NewTicker(1 * time.Hour)
 		for range ticker.C {
@@ -84,9 +97,10 @@ func init() {
 	if port == "" {
 		port = "8080"
 	}
+	log.Printf("Server listening on 0.0.0.0:%s\n", port)
 	log.Fatal(
 		app.Listen("0.0.0.0:"+port, fiber.ListenConfig{
-			EnablePrintRoutes: true,
+			EnablePrintRoutes: false,
 		}),
 	)
 }
