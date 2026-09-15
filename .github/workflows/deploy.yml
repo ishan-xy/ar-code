@@ -60,6 +60,6 @@ jobs:
             echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             # Pull new image for the branch environment
             docker compose pull backend-${{ github.ref_name }}
-            # Recreate the target service without stopping others
-            docker compose up -d --no-deps backend-${{ github.ref_name }}
+            # Recreate the target service and ensure dependencies (redis) are up
+            docker compose up -d backend-${{ github.ref_name }}
             docker image prune -f

@@ -19,7 +19,6 @@ type Config struct {
 	CookieName    string
 
 	AccountID       string
-	TokenValue      string
 	AccessKeyID     string
 	SecretAccessKey string
 	CdnDomain       string
@@ -30,6 +29,7 @@ type Config struct {
 
 var Cfg *Config
 var RedisClient *redis.Client
+
 func init() {
 	loadEnv()
 	var err error
@@ -37,9 +37,14 @@ func init() {
 	if err != nil {
 		log.Fatal(utils.WithStack(err))
 	}
+
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
 	RedisClient = redis.NewClient(&redis.Options{
-		Addr:     Getenv("REDIS_ADDR"),
-		Password: Getenv("REDIS_PASSWORD"),
+		Addr:     redisAddr,
+		Password: os.Getenv("REDIS_PASSWORD"),
 		DB:       0, // use default DB
 	})
 	ping, err := RedisClient.Ping(context.Background()).Result()
@@ -47,7 +52,7 @@ func init() {
 		log.Fatalf("Failed to connect to Redis: %v", utils.WithStack(err))
 	}
 	log.Println("Connected to Redis:", ping)
-	log.Println("Configuration loaded successfully:", Cfg)
+	log.Println("Configuration loaded successfully")
 }
 
 func loadConfig() (*Config, error) {
@@ -58,32 +63,33 @@ func loadConfig() (*Config, error) {
 
 	viewerURL := os.Getenv("VIEWER_URL")
 	if viewerURL == "" {
-		viewerURL = os.Getenv("FRONTEND_URL")
-	}
-	if viewerURL == "" {
 		viewerURL = "https://v.gamchngr.xyz"
 	}
 
 	bucketName := os.Getenv("R2_BUCKET_NAME")
 	if bucketName == "" {
-		bucketName = os.Getenv("BUCKET_NAME")
-	}
-	if bucketName == "" {
 		bucketName = "ar-models"
+	}
+
+	dbName := os.Getenv("DB_NAME")
+	if dbName == "" {
+		dbName = os.Getenv("DBName")
+	}
+	if dbName == "" {
+		dbName = "ar-code-dev"
 	}
 
 	return &Config{
 		Port:          port,
 		MongoURI:      Getenv("MONGO_URI"),
-		DBName:        Getenv("DBName"),
+		DBName:        dbName,
 		Secret:        Getenv("SECRET"),
 		JWTExpiration: time.Hour * 24,
 		CookieName:    "sessionID",
 
-		AccountID:       Getenv("AccountID"),
-		TokenValue:      Getenv("TokenValue"),
-		AccessKeyID:     Getenv("AccessKeyID"),
-		SecretAccessKey: Getenv("SecretAccessKey"),
+		AccountID:       Getenv("CF_ACCOUNT_ID"),
+		AccessKeyID:     Getenv("CF_ACCESS_KEY_ID"),
+		SecretAccessKey: Getenv("CF_SECRET_ACCESS_KEY"),
 		CdnDomain:       Getenv("CDN_DOMAIN"),
 		BucketName:      bucketName,
 

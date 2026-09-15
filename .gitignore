@@ -1,13 +1,31 @@
-.env
-uploaded_models/
-.glb
-.usdz
-tmp/
-temp/
-.log
-.exe
-.venv
+# Binaries and build outputs
+backend
+server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
 
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Temporary and upload directories
+temp/
+tmp/
+uploaded_models/
+*.glb
+*.usdz
+*.log
+
+# OS & IDE Files
 .DS_Store
-.env.old
-.env.production
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

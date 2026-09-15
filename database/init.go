@@ -35,7 +35,6 @@ func init() {
 	DB = client.Database(config.Cfg.DBName)
 	UserDB = Collection[User]{DB.Collection("users")}
 	AR_modelDB = Collection[AR_model]{DB.Collection("ar_model")}
-	log.Println(UserDB.Collection.Name())
 	EnsureQueryIndex(AR_modelDB.Collection)
 }
 
